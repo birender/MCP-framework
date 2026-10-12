@@ -176,26 +176,35 @@ final class McpServer
                     'required' => ['search'],
                     'additionalProperties' => false
                 ]  
-            ],            
+            ],                        
             [
                 'name' => 'search_projects',
-                'description' => 'Search project or orders by project number,order number, or project name.',
+                'description' =>
+                    'Search ERP projects or orders by project number, order number, or project name. Set include_booked_by_name to true only when the user asks who booked the project or requests the booker name.',
                 'inputSchema' => [
                     'type' => 'object',
-                    'properties' => [                        
+                    'properties' => [
                         'project_no' => [
                             'type' => 'string',
                             'description' => 'The project number.'
                         ],
+                        'order_number' => [
+                            'type' => 'string',
+                            'description' => 'The order number.'
+                        ],
                         'project_name' => [
                             'type' => 'string',
                             'description' => 'The project name or part of its name.'
+                        ],
+                        'include_booked_by_name' => [
+                            'type' => 'boolean',
+                            'description' => 'Set to true only when the user asks for the name of the person who booked the project. Otherwise false or omit.'
                         ]
                     ],
-                    'required' => ['search'],
                     'additionalProperties' => false
                 ]
             ]
+
         ];/* End of Array */
     }/* End of Method */
 
@@ -297,6 +306,25 @@ final class McpServer
     {
         
     }
+    
+    public function getToolsForAI(): array
+    {
+        $tools = [];
+
+        foreach ($this->getTools() as $tool) {
+            $tools[] = [
+                'type' => 'function',
+                'function' => [
+                    'name' => $tool['name'],
+                    'description' => $tool['description'],
+                    'parameters' => $tool['inputSchema']
+                ]
+            ];
+        }
+
+        return $tools;
+    }
+
 
     private function error(mixed $id,int $code,string $message): array 
     {
