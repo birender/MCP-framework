@@ -87,6 +87,9 @@ final class McpServer
             case 'get_user_by_id':
                 $result = $this->get_user_detail_by_id($arguments);
                 break;
+            case 'search_projects':
+                $result = $this->searchProjects($arguments);
+                break;
             default:
                 return [
                     'jsonrpc' => '2.0',
@@ -126,7 +129,6 @@ final class McpServer
             'version' => $row['version'] ?? 'unknown'
         ];
     }
-
 
     private function getTools(): array
     {
@@ -174,10 +176,28 @@ final class McpServer
                     'required' => ['search'],
                     'additionalProperties' => false
                 ]  
+            ],            
+            [
+                'name' => 'search_projects',
+                'description' => 'Search project or orders by project number,order number, or project name.',
+                'inputSchema' => [
+                    'type' => 'object',
+                    'properties' => [                        
+                        'project_no' => [
+                            'type' => 'string',
+                            'description' => 'The project number.'
+                        ],
+                        'project_name' => [
+                            'type' => 'string',
+                            'description' => 'The project name or part of its name.'
+                        ]
+                    ],
+                    'required' => ['search'],
+                    'additionalProperties' => false
+                ]
             ]
-
-        ];
-    }
+        ];/* End of Array */
+    }/* End of Method */
 
     private function searchUsers(array $arguments):array
     {
@@ -210,32 +230,67 @@ final class McpServer
                 user_is_active,
                 sso_last_login,
                 last_activity,
-                sso_disabled
-            FROM user_details
-            WHERE
-                user_first_name LIKE :search1
-                OR user_last_name LIKE :search2
-                OR user_full_name LIKE :search3
-                OR user_email LIKE :search4
-            ORDER BY user_full_name
-            LIMIT {$limit}
-        ";
-
+                sso_disabled FROM core_user_details WHERE (user_first_name LIKE ? OR user_last_name LIKE ? OR user_full_name LIKE ? OR user_email LIKE ?) ORDER BY user_full_name LIMIT {$limit}";
+        
         $stmt = $this->pdo->prepare($sql);
+
         $term = '%' . $search . '%';
 
-        $stmt->execute([
-            'search1' => $term,
-            'search2' => $term,
-            'search3' => $term,
-            'search4' => $term,
-            'search5' => $term
-        ]);
+        $stmt->execute([$term,$term,$term,$term]);
+
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
-            'count' => 0,
-            'users' => $stmt->fetchAll(PDO::FETCH_ASSOC)
-        ];     
+            'count' => count($users),
+            'users' => $users
+        ];    
+    }
+    
+    private function searchProjects(array $arguments):array
+    {
+        $includeBookedByName = !empty($arguments['include_booked_by_name']);
+        $search = trim($arguments['search'] ?? '');
+        $limit = filter_var(
+            $arguments['limit'] ?? 10,
+            FILTER_VALIDATE_INT
+        );
+
+        if ($search === '') {
+            throw new InvalidArgumentException(
+                'Search term is required.'
+            );
+        }
+
+        if ($limit === false || $limit < 1 || $limit > 20) {
+            throw new InvalidArgumentException(
+                'Limit must be between 1 and 20.'
+            );
+        }
+
+        $sql = "SELECT p.project_no,p.order_number,p.order_type,p.order_stage,p.is_cancelled,p.store_location,p.booked_date,p.booked_by,p.booked_revenue_usd,p.booked_margin,p.project_name FROM core_projects_details AS p ";
+
+        if ($includeBookedByName) {
+            $sql = str_replace(
+                'p.booked_revenue_usd,',
+                'u.user_full_name AS booked_by_name, p.booked_revenue_usd,',
+                $sql
+            );
+            $sql .= " LEFT JOIN core_user_details AS u ON u.user_id = p.booked_by";
+        }
+        $sql.= " WHERE (p.project_no LIKE ? OR p.order_number LIKE ? OR p.project_name LIKE ?) ORDER BY p.project_name LIMIT {$limit}";
+ 
+        $stmt = $this->pdo->prepare($sql);
+
+        $term = '%' . $search . '%';
+
+        $stmt->execute([$term,$term,$term]);
+
+        $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'count' => count($projects),
+            'projects' => $projects
+        ];    
     }
 
     private function get_user_detail_by_id(array $arguments):array
@@ -243,11 +298,8 @@ final class McpServer
         
     }
 
-    private function error(
-        mixed $id,
-        int $code,
-        string $message
-    ): array {
+    private function error(mixed $id,int $code,string $message): array 
+    {
         return [
             'jsonrpc' => '2.0',
             'id' => $id,

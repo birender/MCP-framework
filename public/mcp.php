@@ -28,7 +28,7 @@ if (!is_array($request) ||($request['jsonrpc'] ?? null) !== '2.0' ||!isset($requ
 try {
     $server = new McpServer(getPdo());    
     $response = $server->handle($request);
-    //echo "<pre>";print_r($response); ;
+    //echo "<pre>";print_r($response);die;
     // Notifications have no response body.
     if ($response === []) {
         http_response_code(202);
@@ -41,7 +41,7 @@ try {
     );
 } catch (Throwable $e) {
     error_log('MCP endpoint failure: ' . $e->getMessage());
-
+    //echo "<pre>";print_r($e);die;
     http_response_code(500);
     echo json_encode([
         'jsonrpc' => '2.0',
