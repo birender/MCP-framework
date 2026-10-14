@@ -5,13 +5,15 @@ class OllamaClient
 {
     private string $endpoint;
     private string $model;
+    private string $apiKey;
 
-    public function __construct(
-        string $endpoint = 'http://localhost:11434/api/chat',
-        string $model = 'qwen2.5:3b'
-    ) {
+    public function __construct(string $endpoint = 'https://ollama.com/api/chat',string $model = 'gemma4:31b',?string $apiKey = '1db700b042524e2fafb6a141ffb652f8.-EfPFFrOe8VPFhzirZcEosek') {
         $this->endpoint = $endpoint;
         $this->model = $model;
+        $this->apiKey = $apiKey;        
+        if ($this->apiKey === '') {
+            throw new RuntimeException('OLLAMA_API_KEY environment variable is missing.');
+        }
     }
 
     public function chat(string $message): string
@@ -34,6 +36,7 @@ class OllamaClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
+                'Authorization: Bearer ' . $this->apiKey,
             ],
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_CONNECTTIMEOUT => 10,
@@ -77,22 +80,18 @@ class OllamaClient
 
         return $data['message']['content'];
     }
-
     
     public function chatWithTools(array $payload): array
     {
         $ch = curl_init($this->endpoint);
-
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
+                'Authorization: Bearer ' . $this->apiKey,
             ],
-            CURLOPT_POSTFIELDS => json_encode(
-                $payload,
-                JSON_THROW_ON_ERROR
-            ),
+            CURLOPT_POSTFIELDS => json_encode($payload,JSON_THROW_ON_ERROR),
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 120,
         ]);
@@ -132,5 +131,4 @@ class OllamaClient
 
         return $data;
     }
-
 }

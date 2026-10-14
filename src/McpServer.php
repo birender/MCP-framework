@@ -255,20 +255,15 @@ final class McpServer
         ];    
     }
     
-    private function searchProjects(array $arguments):array
+     
+    private function searchProjects(array $arguments): array
     {
         $includeBookedByName = !empty($arguments['include_booked_by_name']);
-        $search = trim($arguments['search'] ?? '');
+
         $limit = filter_var(
             $arguments['limit'] ?? 10,
             FILTER_VALIDATE_INT
         );
-
-        if ($search === '') {
-            throw new InvalidArgumentException(
-                'Search term is required.'
-            );
-        }
 
         if ($limit === false || $limit < 1 || $limit > 20) {
             throw new InvalidArgumentException(
@@ -276,31 +271,87 @@ final class McpServer
             );
         }
 
-        $sql = "SELECT p.project_no,p.order_number,p.order_type,p.order_stage,p.is_cancelled,p.store_location,p.booked_date,p.booked_by,p.booked_revenue_usd,p.booked_margin,p.project_name FROM core_projects_details AS p ";
+        $conditions = [];
+        $params = [];
+
+        $searchFields = [
+            'project_no',
+            'order_number',
+            'project_name'
+        ];
+
+        foreach ($searchFields as $field) {
+            if (!isset($arguments[$field]) || !is_string($arguments[$field])) {
+                continue;
+            }
+
+            $value = trim($arguments[$field]);
+
+            if ($value === '') {
+                continue;
+            }
+
+            $placeholder = ':search_' . $field;
+
+            $conditions[] = "p.{$field} LIKE {$placeholder}";
+            $params[$placeholder] = '%' . $value . '%';
+        }
+
+        if (empty($conditions)) {
+            throw new InvalidArgumentException(
+                'Provide a project number, order number, or project name.'
+            );
+        }
+
+        $sql = "
+            SELECT
+                p.project_no,
+                p.order_number,
+                p.order_type,
+                p.order_stage,
+                p.is_cancelled,
+                p.store_location,
+                p.booked_date,
+                p.booked_by,
+                p.booked_revenue_usd,
+                p.booked_margin,
+                p.project_name
+        ";
 
         if ($includeBookedByName) {
-            $sql = str_replace(
-                'p.booked_revenue_usd,',
-                'u.user_full_name AS booked_by_name, p.booked_revenue_usd,',
-                $sql
-            );
-            $sql .= " LEFT JOIN core_user_details AS u ON u.user_id = p.booked_by";
+            $sql .= ",
+                u.user_full_name AS booked_by_name
+            ";
         }
-        $sql.= " WHERE (p.project_no LIKE ? OR p.order_number LIKE ? OR p.project_name LIKE ?) ORDER BY p.project_name LIMIT {$limit}";
- 
+
+        $sql .= "
+            FROM core_projects_details AS p
+        ";
+
+        if ($includeBookedByName) {
+            $sql .= "
+                LEFT JOIN core_user_details AS u
+                    ON u.user_id = p.booked_by
+            ";
+        }
+
+        $sql .= "
+            WHERE (" . implode(' OR ', $conditions) . ")
+            ORDER BY p.project_name
+            LIMIT {$limit}
+        ";
+
         $stmt = $this->pdo->prepare($sql);
-
-        $term = '%' . $search . '%';
-
-        $stmt->execute([$term,$term,$term]);
+        $stmt->execute($params);
 
         $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return [
             'count' => count($projects),
             'projects' => $projects
-        ];    
+        ];
     }
+
 
     private function get_user_detail_by_id(array $arguments):array
     {
