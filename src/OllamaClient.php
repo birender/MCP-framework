@@ -7,7 +7,7 @@ class OllamaClient
     private string $model;
     private string $apiKey;
 
-    public function __construct(string $endpoint = 'https://ollama.com/api/chat',string $model = 'gemma4:31b',?string $apiKey = '1db700b042524e2fafb6a141ffb652f8.-EfPFFrOe8VPFhzirZcEosek') {
+    public function __construct(string $endpoint = 'https://ollama.com/api/chat',string $model = 'gemma4:31b',?string $apiKey = '<OLLAMA_API_KEY>') {
         $this->endpoint = $endpoint;
         $this->model = $model;
         $this->apiKey = $apiKey;        
