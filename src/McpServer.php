@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 final class McpServer
 {
+    private const PROTOCOL_VERSION = '2025-03-26';
     public function __construct(private readonly PDO $pdo) {}
 
     public function handle(array $request): array
@@ -10,10 +11,15 @@ final class McpServer
         $id = $request['id'] ?? null;
         $method = $request['method'] ?? '';
 
-        // Notifications do not require a response.
+        // Notifications do not require a response.        
         if ($id === null) {
-            return [];
+            if (is_string($method) && str_starts_with($method, 'notifications/')) {
+                return [];
+            }
+
+            return $this->error(null, -32600, 'Invalid request');
         }
+
 
         if (!is_string($method)) {
             return $this->error($id, -32600, 'Invalid request');
@@ -25,7 +31,7 @@ final class McpServer
                     'jsonrpc' => '2.0',
                     'id' => $id,
                     'result' => [
-                        'protocolVersion' => '2025-03-26',
+                        'protocolVersion' => self::PROTOCOL_VERSION,
                         'capabilities' => [
                             'tools' => ['listChanged' => false]
                         ],
@@ -117,7 +123,6 @@ final class McpServer
             ]
         ];
     }
-
     
     private function getDatabaseInfo(): array
     {
