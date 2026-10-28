@@ -393,4 +393,4 @@ final class McpServer
             ]
         ];
     }
-}
+}/* End of class */
