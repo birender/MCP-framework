@@ -34,7 +34,7 @@ class ErpAiAssistant
         // Allow up to 5 rounds of tool execution.
         for ($round = 0; $round < 5; $round++) {
             $response = $this->ollama->chatWithTools([
-                'model' => 'gemma4:31b',
+                'model' => 'gemma4:31b',// Add Modal name
                 'messages' => $messages,
                 'tools' => $tools,
                 'stream' => false
