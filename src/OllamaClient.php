@@ -131,4 +131,4 @@ class OllamaClient
 
         return $data;
     }
-}
+}/* End of class */
