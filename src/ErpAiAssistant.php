@@ -111,5 +111,4 @@ class ErpAiAssistant
             'Maximum tool-call rounds reached without a final answer.'
         );
     }
-
-}
+}/* End of class */
