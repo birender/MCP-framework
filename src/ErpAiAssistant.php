@@ -1,4 +1,5 @@
 <?php
+/* Ollama Client Erp Assistant Class */
 require_once __DIR__ . '/OllamaClient.php';
 
 class ErpAiAssistant
@@ -24,7 +25,7 @@ class ErpAiAssistant
                     'the project. After receiving tool results, explain them naturally.'
             ],
             [
-                'role' => 'user',
+                'role' => 'user',//thinker
                 'content' => $question
             ]
         ];
